@@ -1,0 +1,99 @@
+{
+  "name": "markdown-image-converter",
+  "displayName": "Markdown Image Converter",
+  "description": "Convert Markdown files to images (PNG/JPEG) directly in VS Code",
+  "publisher": "ryuya",
+  "license": "MIT",
+  "icon": "images/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/3ru/markdown-image-converter"
+  },
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.97.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "markdown-image-converter.exportPNG",
+        "title": "Markdown Image Converter: Export (png)"
+      },
+      {
+        "command": "markdown-image-converter.exportJPEG",
+        "title": "Markdown Image Converter: Export (jpeg)"
+      }
+    ],
+    "configuration": {
+      "title": "Markdown Image Converter",
+      "properties": {
+        "markdown-image-converter.splitter": {
+          "type": "string",
+          "default": "",
+          "description": "Splitter string to divide markdown into multiple images"
+        },
+        "markdown-image-converter.outputFormat": {
+          "type": "string",
+          "enum": [
+            "png",
+            "jpeg"
+          ],
+          "default": "png",
+          "description": "Default output format"
+        },
+        "markdown-image-converter.resolution": {
+          "type": "string",
+          "enum": [
+            "standard",
+            "hd"
+          ],
+          "default": "hd",
+          "description": "Image resolution quality (standard: 1x, hd: 2x)"
+        },
+        "markdown-image-converter.splitOutputDir": {
+          "type": "string",
+          "default": "{name}-{format}",
+          "description": "Output directory pattern for split images. Default: filename-format (e.g., example-png)"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "pnpm run package",
+    "compile": "pnpm run check-types && pnpm run lint && node esbuild.js",
+    "watch": "npm-run-all -p watch:*",
+    "watch:esbuild": "node esbuild.js --watch",
+    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+    "package": "pnpm run check-types && pnpm run lint && node esbuild.js --production",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "pnpm run compile-tests && pnpm run compile && pnpm run lint",
+    "check-types": "tsc --noEmit",
+    "lint": "biome check ./src",
+    "format": "biome format ./src --write",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "1.9.4",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "20.x",
+    "@types/sinon": "^17.0.3",
+    "@types/vscode": "^1.97.0",
+    "@vscode/test-cli": "^0.0.10",
+    "@vscode/test-electron": "^2.4.1",
+    "esbuild": "^0.24.2",
+    "npm-run-all": "^4.1.5",
+    "sinon": "^19.0.2",
+    "typescript": "^5.7.3"
+  },
+  "dependencies": {
+    "puppeteer": "^24.2.0",
+    "zenn-content-css": "^0.1.158",
+    "zenn-markdown-html": "^0.1.158"
+  }
+}
