@@ -73,7 +73,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**🌟 Enjoying the extension? [Rate it on the marketplace](https://marketplace.visualstudio.com/items?itemName=3ru.markdown-image-converter)!**
+**🌟 Enjoying the extension? [Rate it on the marketplace](https://marketplace.visualstudio.com/items?itemName=ryuya.markdown-image-converter)!**
 
 Found a bug? Please [open an issue](https://github.com/3ru/markdown-image-converter/issues).
 
