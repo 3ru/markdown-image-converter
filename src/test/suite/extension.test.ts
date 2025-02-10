@@ -7,8 +7,8 @@ import * as vscode from "vscode";
 const TEST_CONFIG = {
 	dir: path.join(__dirname, "../../../test-workspace"),
 	fileNameSlug: "test",
-	timeout: 3000, // 3 seconds
-	waitTime: 1500, // Time to wait for file generation
+	timeout: 5000, // 5 seconds
+	waitTime: 3000, // Time to wait for file generation
 };
 
 /**

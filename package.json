@@ -16,6 +16,28 @@
   "categories": [
     "Other"
   ],
+  "keywords": [
+    "vscode-extension",
+    "markdown",
+    "image-converter",
+    "markdown-to-image",
+    "png",
+    "jpeg",
+    "documentation",
+    "screenshot",
+    "content-creation",
+    "visual-studio-code",
+    "developer-tools",
+    "productivity",
+    "export",
+    "converter",
+    "image-generator",
+    "markdown-tools",
+    "writing",
+    "blogging",
+    "social-media",
+    "zenn"
+  ],
   "activationEvents": [],
   "main": "./dist/extension.js",
   "contributes": {
@@ -81,7 +103,7 @@
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
     "@types/mocha": "^10.0.10",
-    "@types/node": "20.x",
+    "@types/node": "~20.17.17",
     "@types/sinon": "^17.0.3",
     "@types/vscode": "^1.97.0",
     "@vscode/test-cli": "^0.0.10",

@@ -3,6 +3,7 @@ on:
   push:
     tags:
       - v*
+  workflow_dispatch:
 
 jobs:
   upload-artifact:
@@ -14,6 +15,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 18
+      - name: Install vsce
+        run: npm install -g vsce
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
@@ -21,7 +24,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install
       - name: Run build
-        run: pnpm vsce package
+        run: vsce package --no-dependencies
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
@@ -34,11 +37,9 @@ jobs:
     steps:
       - name: Download artifact
         uses: actions/download-artifact@v4
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 8
+      - name: Install vsce
+        run: npm install -g vsce
       - name: Publish
-        run: pnpm vsce publish --packagePath $(find . -iname *.vsix)
+        run: vsce publish --packagePath $(find . -iname *.vsix)
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}

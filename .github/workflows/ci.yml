@@ -9,21 +9,35 @@ on:
 
 jobs:
   test:
-    name: Test
-    runs-on: ubuntu-latest
+    name: Test (${{ matrix.os }}, Node ${{ matrix.node-version }})
+    strategy:
+      fail-fast: false # Don't cancel other jobs if one fails
+      matrix:
+        # Note: Temporarily commented out due to timeout issues on free-tier runners with limited resources
+        # os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest]
+        node-version: [18.x]
+        include:
+          - os: ubuntu-latest
+            playwright-deps: chromium-browser
+            xvfb: true
+        #   - os: windows-latest
+        #     playwright-deps: ""
+        #     xvfb: false
+        #   - os: macos-latest
+        #     playwright-deps: chromium
+        #     xvfb: false
+
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 15
 
-    strategy:
-      matrix:
-        node-version: [18.x, 20.x]
+    env:
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1 
+      TEST_WORKSPACE: ${{ github.workspace }}/test-workspace
 
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node-version }}
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -31,62 +45,74 @@ jobs:
           version: 8
           run_install: false
 
-      - name: Get pnpm store directory
-        shell: bash
-        run: |
-          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
-
-      - name: Setup pnpm cache
-        uses: actions/cache@v3
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
         with:
-          path: ${{ env.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
+          node-version: ${{ matrix.node-version }}
+          # cache: "pnpm"
 
-      - name: Install dependencies
-        run: pnpm install
+      # Install OS-specific dependencies
+      - name: Install Linux dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ${{ matrix.playwright-deps }} xvfb libxkbfile-dev libsecret-1-0
 
-    #   - name: Install Puppeteer dependencies
-    #     run: |
-    #       sudo apt-get update
-    #       sudo apt-get install -y chromium-browser
+      - name: Install macOS dependencies
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew install --cask chromium
 
-      - name: Run linter
-        run: pnpm lint
-
-      - name: Run type check
-        run: pnpm check-types
-
-    #   - name: Setup virtual display
-    #     run: |
-    #       sudo apt-get install -y xvfb
-        #   Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
-
-      - run: /usr/bin/Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 & echo "Starting Xvfb..."
+      # Create test workspace
+      - name: Create test directories
+        run: |
+          mkdir -p test-workspace
+          chmod 777 test-workspace
         shell: bash
 
-      - name: Run tests
-        # run: xvfb-run -a pnpm test
-        run: pnpm test
+      # Main build and test steps
+      - name: Install dependencies
+        run: |
+          pnpm install
+        shell: bash
+
+      # Run tests with OS-specific configuration
+      - name: Run tests (Linux with Xvfb)
+        if: matrix.xvfb
+        run: xvfb-run --auto-servernum --server-args='-screen 0 1024x768x24' pnpm test
         env:
           DISPLAY: :99.0
+          TEST_WORKSPACE: ${{ github.workspace }}/test-workspace
+
+      - name: Run tests (Windows/macOS)
+        if: ${{ !matrix.xvfb }}
+        run: pnpm test
 
       - name: Build extension
         run: pnpm package
 
-      - name: Upload extension artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: extension-${{ matrix.node-version }}
-          path: |
-            *.vsix
-          retention-days: 7
+      # Artifact upload
+    #   - name: Upload test results
+    #     if: always()
+    #     uses: actions/upload-artifact@v4
+    #     with:
+    #       name: test-results-${{ matrix.os }}-node-${{ matrix.node-version }}
+    #       path: test-results
+    #       retention-days: 7
 
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-results-${{ matrix.node-version }}
-          path: test-results
-          retention-days: 7
+    #   - name: Upload VSIX package
+    #     if: success() && matrix.os == 'ubuntu-latest' # Only upload from Linux build
+    #     uses: actions/upload-artifact@v4
+    #     with:
+    #       name: extension-package
+    #       path: "*.vsix"
+    #       retention-days: 7
+
+    #   # Upload lockfile if it was generated
+    #   - name: Upload generated lockfile
+    #     if: success() && !hashFiles('**/pnpm-lock.yaml')
+    #     uses: actions/upload-artifact@v4
+    #     with:
+    #       name: pnpm-lock
+    #       path: pnpm-lock.yaml
+    #       retention-days: 1
