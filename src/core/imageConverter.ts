@@ -3,19 +3,19 @@ import * as puppeteer from "puppeteer";
 import markdownToHtml from "zenn-markdown-html";
 import { ConversionOptions, MarkdownSection, Resolution } from "../types";
 
+// Import CSS directly as text
+const zennCss = require("zenn-content-css/lib/index.css");
+
 /**
  * Handles the conversion of markdown content to images using Puppeteer.
  * Uses Zenn's markdown styling for consistent and beautiful output.
  */
 export class ImageConverter {
-	private readonly zennCssPath = require.resolve("zenn-content-css");
 	/**
 	 * Default styles loaded from Zenn's CSS.
 	 * TODO: Make styles customizable through user configuration
 	 */
-	private readonly defaultStyles = `
-    ${fs.readFileSync(this.zennCssPath, "utf-8")}
-  `;
+	private readonly defaultStyles = zennCss;
 
 	/**
 	 * Determines the image scale factor based on the requested resolution.
