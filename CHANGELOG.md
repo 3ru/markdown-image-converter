@@ -5,6 +5,12 @@ All notable changes to the "markdown-image-converter" extension will be document
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.2] - 2025-02-22
+
+### Fixed
+- Command execution reliability improvements
+- Lowered minimum VS Code version requirement from 1.97 to 1.80 for broader compatibility
+
 ## [0.0.1] - 2025-02-09
 
 ### Added
@@ -24,4 +30,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `Markdown Image Converter: Export (png)`
   - `Markdown Image Converter: Export (jpeg)`
 
+[0.0.2]: https://github.com/3ru/markdown-image-converter/compare/v0.0.1...v0.0.2
 [0.0.1]: https://github.com/3ru/markdown-image-converter/releases/tag/v0.0.1
