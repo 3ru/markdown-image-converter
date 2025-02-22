@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.0.2] - 2025-02-22
 
+### Added
+- Added support for custom Chrome executable paths through settings
+
 ### Fixed
 - Command execution reliability improvements
 - Lowered minimum VS Code version requirement from 1.97 to 1.80 for broader compatibility
