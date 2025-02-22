@@ -1,4 +1,3 @@
-import * as fs from "fs";
 import * as puppeteer from "puppeteer-core";
 import * as vscode from "vscode";
 import markdownToHtml from "zenn-markdown-html";
@@ -80,14 +79,6 @@ export class ImageConverter {
     `;
 	}
 
-	private getDefaultChromePath(): string {
-		return process.platform === "win32"
-			? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
-			: process.platform === "darwin"
-				? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-				: "/usr/bin/google-chrome";
-	}
-
 	/**
 	 * Captures the rendered HTML as an image using Puppeteer.
 	 * @param html - The HTML content to capture
@@ -102,7 +93,7 @@ export class ImageConverter {
 			"markdown-image-converter",
 		);
 		const executablePath =
-			config.get<string>("executablePath") || this.getDefaultChromePath();
+			config.get<string>("executablePath") || puppeteer.executablePath();
 
 		const browser = await puppeteer.launch({
 			headless: true,
