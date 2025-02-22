@@ -18,7 +18,7 @@ Convert your markdown files to PNG/JPEG images directly in VS Code. Perfect for 
 
 1. Open VS Code
 2. Press `Ctrl+P` / `Cmd+P`
-3. Type `ext install 3ru.markdown-image-converter`
+3. Type `ext install ryuya.markdown-image-converter`
 4. Press Enter
 
 ## 🚀 Quick Start
