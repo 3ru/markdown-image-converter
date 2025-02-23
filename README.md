@@ -2,6 +2,8 @@
 
 Convert your markdown files to PNG/JPEG images directly in VS Code. Perfect for creating social media posts, documentation screenshots, or visual content from your markdown files.
 
+![Default conversion demo](images/demo.gif)
+
 ## ✨ Features
 
 - 🖼️ **One-Click Conversion**: Convert any markdown file to PNG/JPEG with a single command
@@ -10,9 +12,6 @@ Convert your markdown files to PNG/JPEG images directly in VS Code. Perfect for 
 - 📏 **Resolution Options**: Choose between standard and HD quality outputs
 - ⚡ **Split Mode**: Split and convert markdown sections using customizable delimiters (e.g., `---`)
 - 🎯 **Flexible Output**: Customizable output directory and file naming
-
-### Demo
-![convert markdown to image](images/demo.gif)
 
 ## 📦 Installation
 
@@ -28,22 +27,28 @@ Convert your markdown files to PNG/JPEG images directly in VS Code. Perfect for 
 3. Choose your desired output format (PNG/JPEG)
 4. The image will be generated based on your settings
 
+## 📝 Usage
+### Split Mode Demo
+Split your markdown into multiple images using custom delimiters:
+
+![Split mode demo](images/split.gif)
+
 ## ⚙️ Extension Settings
 
 This extension contributes the following settings:
 
-| Setting | Type | Default | Description |
-|---------|------|---------|-------------|
-| `markdown-image-converter.outputFormat` | `string` | `"png"` | Default output format (`"png"` or `"jpeg"`) |
-| `markdown-image-converter.resolution` | `string` | `"standard"` | Output resolution (`"standard"` or `"hd"`) |
-| `markdown-image-converter.outputPath` | `string` | `""` | Custom output directory pattern (e.g., `"images/{format}"`) |
-| `markdown-image-converter.splitter` | `string` | `""` | Delimiter to split markdown sections (e.g., `"---"`) |
+| Setting                                 | Type     | Default      | Description                                                 |
+| --------------------------------------- | -------- | ------------ | ----------------------------------------------------------- |
+| `markdown-image-converter.outputFormat` | `string` | `"png"`      | Default output format (`"png"` or `"jpeg"`)                 |
+| `markdown-image-converter.resolution`   | `string` | `"standard"` | Output resolution (`"standard"` or `"hd"`)                  |
+| `markdown-image-converter.outputPath`   | `string` | `""`         | Custom output directory pattern (e.g., `"images/{format}"`) |
+| `markdown-image-converter.splitter`     | `string` | `""`         | Delimiter to split markdown sections (e.g., `"---"`)        |
 
 ## ⌨️ Commands
 
-| Command | Description |
-|---------|-------------|
-| `markdown-image-converter.exportPNG` | Convert to PNG |
+| Command                               | Description     |
+| ------------------------------------- | --------------- |
+| `markdown-image-converter.exportPNG`  | Convert to PNG  |
 | `markdown-image-converter.exportJPEG` | Convert to JPEG |
 
 ## 🔍 Known Issues @ Roadmap
@@ -51,16 +56,6 @@ This extension contributes the following settings:
 - Large markdown files may take longer to convert
 - Katex, mermaid, other embeded elements rendering is under development
 
-
-## 📝 Release Notes
-
-### 0.0.1 (2025-02-09)
-- 🎉 Initial release
-- ✨ Basic markdown to PNG/JPEG conversion
-- 🎨 Zenn-style markdown rendering
-- 📏 Standard and HD resolution support
-- ⚡ Section splitting support
-- 🛠️ Customizable output settings
 
 ## 📚 Resources
 
