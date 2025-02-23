@@ -9,7 +9,7 @@
 		"type": "git",
 		"url": "https://github.com/3ru/markdown-image-converter"
 	},
-	"version": "0.0.2",
+	"version": "0.0.3",
 	"engines": {
 		"vscode": "^1.80.0"
 	},
@@ -101,7 +101,6 @@
 		"@biomejs/biome": "1.9.4",
 		"@types/mocha": "^10.0.10",
 		"@types/node": "~20.17.17",
-		"@types/puppeteer-core": "^7.0.4",
 		"@types/sinon": "^17.0.3",
 		"@types/vscode": "^1.80.0",
 		"@vscode/test-cli": "^0.0.10",
@@ -112,6 +111,7 @@
 		"typescript": "^5.7.3"
 	},
 	"dependencies": {
+		"puppeteer": "^24.2.1",
 		"puppeteer-core": "^24.2.0",
 		"zenn-content-css": "^0.1.158",
 		"zenn-markdown-html": "^0.1.158"

@@ -1,3 +1,4 @@
+import { executablePath as puppeteerExecutablePath } from "puppeteer";
 import * as puppeteer from "puppeteer-core";
 import * as vscode from "vscode";
 import markdownToHtml from "zenn-markdown-html";
@@ -93,7 +94,7 @@ export class ImageConverter {
 			"markdown-image-converter",
 		);
 		const executablePath =
-			config.get<string>("executablePath") || puppeteer.executablePath();
+			config.get<string>("executablePath") || puppeteerExecutablePath();
 
 		const browser = await puppeteer.launch({
 			headless: true,
