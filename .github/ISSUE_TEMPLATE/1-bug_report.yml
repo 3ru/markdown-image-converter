@@ -1,0 +1,99 @@
+name: "🐛 Bug Report"
+description: Create a bug report
+labels: ['template: bug']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report!
+        Please provide as much information as possible to help us diagnose and fix the issue.
+
+  - type: textarea
+    attributes:
+      label: Bug Description
+      description: A clear description of what the bug is
+      placeholder: |
+        Example: The image conversion fails when...
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Steps to Reproduce
+      description: Steps to reproduce the behavior
+      placeholder: |
+        1. Open file '...'
+        2. Execute command '...'
+        3. See error
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Expected Behavior
+      description: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Actual Behavior
+      description: What actually happened?
+    validations:
+      required: true
+
+  - type: input
+    attributes:
+      label: VS Code Version
+      description: What version of VS Code are you using?
+      placeholder: e.g., 1.80.0
+
+  - type: input
+    attributes:
+      label: Extension Version
+      description: What version of Markdown Image Converter are you using?
+      placeholder: e.g., 0.0.2
+    validations:
+      required: true
+
+  - type: dropdown
+    attributes:
+      label: Operating System
+      options:
+        - Windows
+        - macOS
+        - Linux
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Extension Settings
+      description: Your current extension settings (if relevant)
+      placeholder: |
+        ```json
+        {
+          "markdown-image-converter.executablePath": "",
+          "markdown-image-converter.resolution": "hd",
+          "markdown-image-converter.outputFormat": "png"
+        }
+        ```
+
+  - type: textarea
+    attributes:
+      label: Chrome/Chromium Information
+      description: Information about your Chrome/Chromium installation
+      placeholder: |
+        Chrome Version: e.g., 120.0.6099.129
+        Installation Path: e.g., /Applications/Google Chrome.app/Contents/MacOS/Google Chrome
+
+  - type: textarea
+    attributes:
+      label: Error Message
+      description: If applicable, paste any error messages you received
+      render: shell
+
+  - type: textarea
+    attributes:
+      label: Additional Context
+      description: Add any other context about the problem here (screenshots, logs, etc.) 
