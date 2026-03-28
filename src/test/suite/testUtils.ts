@@ -99,6 +99,32 @@ export const createTestFile = async (
 };
 
 /**
+ * Copies an existing file into the test workspace.
+ *
+ * @param testDir - The absolute path to the test workspace
+ * @param sourcePath - The source file to copy into the workspace
+ * @param destinationName - The destination filename inside the workspace
+ * @returns Promise<string> The absolute path to the copied file
+ */
+export const copyTestFile = async (
+	testDir: string,
+	sourcePath: string,
+	destinationName: string,
+): Promise<string> => {
+	const destinationPath = path.join(testDir, destinationName);
+	try {
+		await fs.promises.copyFile(sourcePath, destinationPath);
+		return destinationPath;
+	} catch (error) {
+		throw new Error(
+			`Failed to copy test file: ${
+				error instanceof Error ? error.message : "Unknown error"
+			}`,
+		);
+	}
+};
+
+/**
  * Type guard to check if an error is an instance of Error
  * Useful for consistent error handling across test utilities
  *

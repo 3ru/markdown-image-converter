@@ -37,12 +37,14 @@ Split your markdown into multiple images using custom delimiters:
 
 This extension contributes the following settings:
 
-| Setting                                 | Type     | Default      | Description                                                 |
-| --------------------------------------- | -------- | ------------ | ----------------------------------------------------------- |
-| `markdown-image-converter.outputFormat` | `string` | `"png"`      | Default output format (`"png"` or `"jpeg"`)                 |
-| `markdown-image-converter.resolution`   | `string` | `"standard"` | Output resolution (`"standard"` or `"hd"`)                  |
-| `markdown-image-converter.outputPath`   | `string` | `""`         | Custom output directory pattern (e.g., `"images/{format}"`) |
-| `markdown-image-converter.splitter`     | `string` | `""`         | Delimiter to split markdown sections (e.g., `"---"`)        |
+| Setting                                    | Type     | Default               | Description                                                            |
+| ------------------------------------------ | -------- | --------------------- | ---------------------------------------------------------------------- |
+| `markdown-image-converter.outputFormat`    | `string` | `"png"`               | Default output format (`"png"` or `"jpeg"`)                            |
+| `markdown-image-converter.resolution`      | `string` | `"hd"`                | Output resolution (`"standard"` or `"hd"`)                             |
+| `markdown-image-converter.splitter`        | `string` | `""`                  | Delimiter to split markdown sections (e.g., `"---"`)                   |
+| `markdown-image-converter.splitOutputDir`  | `string` | `"{name}-{format}"`   | Output directory pattern for split images                              |
+| `markdown-image-converter.margin`          | `number` | `12`                  | Margin around the edges of the exported image, in pixels               |
+| `markdown-image-converter.executablePath`  | `string` | `""`                  | Chrome or Chromium executable path to use for rendering                |
 
 ## ⌨️ Commands
 

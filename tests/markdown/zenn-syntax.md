@@ -23,13 +23,13 @@ Text Links:
 [Complex URL with underscores](https://example.com/path_with_underscore)
 
 Images:
-![Basic image](https://example.com/image.jpg)
-![Image with width](https://example.com/image.jpg =250x)
-![Image with alt text](https://example.com/image.jpg)
+![Basic image](https://www.w3.org/Icons/w3c_home.png)
+![Image with width](https://www.w3.org/Icons/w3c_home.png =250x)
+![Image with alt text](https://www.w3.org/Icons/w3c_home.png)
 *Image caption example*
 
 Image with link:
-[![Linked image](https://example.com/image.jpg)](https://example.com)
+[![Linked image](https://www.w3.org/Icons/w3c_home.png)](https://www.w3.org/)
 
 Tables:
 | Header 1 | Header 2 | Header 3 |

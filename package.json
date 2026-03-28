@@ -13,7 +13,9 @@
 	"engines": {
 		"vscode": "^1.80.0"
 	},
-	"categories": ["Other"],
+	"categories": [
+		"Other"
+	],
 	"keywords": [
 		"vscode-extension",
 		"markdown",
@@ -64,13 +66,19 @@
 				},
 				"markdown-image-converter.outputFormat": {
 					"type": "string",
-					"enum": ["png", "jpeg"],
+					"enum": [
+						"png",
+						"jpeg"
+					],
 					"default": "png",
 					"description": "Default output format"
 				},
 				"markdown-image-converter.resolution": {
 					"type": "string",
-					"enum": ["standard", "hd"],
+					"enum": [
+						"standard",
+						"hd"
+					],
 					"default": "hd",
 					"description": "Image resolution quality (standard: 1x, hd: 2x)"
 				},
@@ -78,6 +86,12 @@
 					"type": "string",
 					"default": "{name}-{format}",
 					"description": "Output directory pattern for split images. Default: filename-format (e.g., example-png)"
+				},
+				"markdown-image-converter.margin": {
+					"type": "number",
+					"minimum": 0,
+					"default": 12,
+					"description": "Margin around the edges of the exported image, in pixels."
 				}
 			}
 		}

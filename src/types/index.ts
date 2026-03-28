@@ -22,6 +22,13 @@ export interface ConversionOptions {
 }
 
 /**
+ * Additional context used while resolving document-relative assets.
+ */
+export interface ConversionContext {
+	sourceFilePath?: string;
+}
+
+/**
  * Represents a section of markdown content.
  * Used when splitting content into multiple sections.
  */
