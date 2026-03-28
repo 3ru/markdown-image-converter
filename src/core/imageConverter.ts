@@ -67,7 +67,7 @@ export class ImageConverter {
 		context: ConversionContext = {},
 	): Promise<Uint8Array> {
 		const htmlContent = await this.renderContent(section.content, context);
-		const html = this.generateDocument(htmlContent);
+		const html = this.generateDocument(htmlContent, this.getMargin());
 		return this.captureImage(html, options);
 	}
 
@@ -83,12 +83,26 @@ export class ImageConverter {
 		return assetInliner.inline(htmlContent);
 	}
 
+	private getMargin(): number {
+		const config = vscode.workspace.getConfiguration(
+			"markdown-image-converter",
+		);
+		const configuredMargin = config.get<number>("margin", 12);
+
+		if (!Number.isFinite(configuredMargin)) {
+			return 12;
+		}
+
+		return Math.max(0, configuredMargin);
+	}
+
 	/**
 	 * Generates the full HTML document used for screenshot rendering.
 	 * @param content - The rendered HTML fragment
+	 * @param margin - The margin around the rendered content in pixels
 	 * @returns HTML string with applied styles
 	 */
-	private generateDocument(content: string): string {
+	private generateDocument(content: string, margin: number): string {
 		return `
       <!DOCTYPE html>
       <html>
@@ -96,6 +110,13 @@ export class ImageConverter {
           <meta charset="UTF-8">
           <style>${this.defaultStyles}</style>
           <style>
+            body {
+              margin: 0;
+            }
+            .render-frame {
+              display: inline-block;
+              padding: ${margin}px;
+            }
             /* Additional styles for images */
             .znc img {
               max-width: 100%;
@@ -106,7 +127,9 @@ export class ImageConverter {
           </style>
         </head>
         <body>
-          <div class="znc">${content}</div>
+          <div class="render-frame">
+            <div class="znc">${content}</div>
+          </div>
         </body>
       </html>
     `;
@@ -133,13 +156,13 @@ export class ImageConverter {
 			});
 
 			await page.setContent(html, { waitUntil: "domcontentloaded" });
-			await page.waitForSelector(".znc");
+			await page.waitForSelector(".render-frame");
 			await page.evaluate(async () => {
 				await document.fonts.ready;
 			});
 			await this.ensureImagesLoaded(page);
 
-			const element = await page.$(".znc");
+			const element = await page.$(".render-frame");
 			if (!element) {
 				throw new Error("Failed to find content element");
 			}

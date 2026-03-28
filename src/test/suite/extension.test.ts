@@ -51,6 +51,17 @@ suite("Extension Integration Test Suite", () => {
 		assert.ok(stats.size > 0, `${format} file should not be empty`);
 	}
 
+	function readPngDimensions(filePath: string): {
+		height: number;
+		width: number;
+	} {
+		const fileBuffer = fs.readFileSync(filePath);
+		return {
+			width: fileBuffer.readUInt32BE(16),
+			height: fileBuffer.readUInt32BE(20),
+		};
+	}
+
 	suiteSetup(async function () {
 		this.timeout(TEST_CONFIG.timeout);
 		await waitForExtensionActivation();
@@ -148,5 +159,44 @@ console.log('Hello World');
 		);
 		await new Promise((resolve) => setTimeout(resolve, TEST_CONFIG.waitTime));
 		await verifyGeneratedImage(expectedFile, "JPEG");
+	});
+
+	test("Should apply configurable margin to PNG output", async function () {
+		this.timeout(15000);
+
+		const configuration = vscode.workspace.getConfiguration(
+			"markdown-image-converter",
+		);
+		const expectedFile = path.join(
+			TEST_CONFIG.dir,
+			`${TEST_CONFIG.fileNameSlug}.png`,
+		);
+		const document = await vscode.workspace.openTextDocument(testFile);
+		await vscode.window.showTextDocument(document);
+
+		await configuration.update("margin", 0, vscode.ConfigurationTarget.Global);
+		await new Promise((resolve) => setTimeout(resolve, 100));
+		vscode.commands.executeCommand("markdown-image-converter.exportPNG");
+		await new Promise((resolve) => setTimeout(resolve, TEST_CONFIG.waitTime));
+		await verifyGeneratedImage(expectedFile, "PNG");
+		const unpaddedDimensions = readPngDimensions(expectedFile);
+
+		await configuration.update("margin", 24, vscode.ConfigurationTarget.Global);
+		await new Promise((resolve) => setTimeout(resolve, 100));
+		vscode.commands.executeCommand("markdown-image-converter.exportPNG");
+		await new Promise((resolve) => setTimeout(resolve, TEST_CONFIG.waitTime));
+		await verifyGeneratedImage(expectedFile, "PNG");
+		const paddedDimensions = readPngDimensions(expectedFile);
+
+		assert.ok(
+			paddedDimensions.width > unpaddedDimensions.width,
+			"Padding should increase the output width",
+		);
+		assert.ok(
+			paddedDimensions.height > unpaddedDimensions.height,
+			"Padding should increase the output height",
+		);
+
+		await configuration.update("margin", 12, vscode.ConfigurationTarget.Global);
 	});
 });
