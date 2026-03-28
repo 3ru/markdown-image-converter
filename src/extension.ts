@@ -2,7 +2,12 @@ import * as vscode from "vscode";
 import { ImageConverter } from "./core/imageConverter";
 import { MarkdownProcessor } from "./core/markdownProcessor";
 import { FileService } from "./services/fileService";
-import { ConversionOptions, OutputFormat, Resolution } from "./types";
+import {
+	ConversionContext,
+	ConversionOptions,
+	OutputFormat,
+	Resolution,
+} from "./types";
 
 /**
  * VSCode extension entry point.
@@ -75,8 +80,16 @@ export function activate(context: vscode.ExtensionContext) {
 									splitter,
 									resolution,
 								};
+								const context: ConversionContext = {
+									sourceFilePath: editor.document.fileName,
+								};
+
 								// Convert markdown to image and save
-								const buffer = await converter.convertToImage(section, options);
+								const buffer = await converter.convertToImage(
+									section,
+									options,
+									context,
+								);
 								await fileService.saveImage(
 									buffer,
 									editor.document.fileName,
@@ -116,6 +129,8 @@ export function activate(context: vscode.ExtensionContext) {
 
 /**
  * Cleanup function called when the extension is deactivated.
- * Currently no cleanup is needed, but this function is required by VSCode.
+ * Ensures long-lived rendering resources are released.
  */
-export function deactivate() {}
+export async function deactivate(): Promise<void> {
+	await ImageConverter.cleanup();
+}

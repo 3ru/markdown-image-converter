@@ -13,7 +13,9 @@
 	"engines": {
 		"vscode": "^1.80.0"
 	},
-	"categories": ["Other"],
+	"categories": [
+		"Other"
+	],
 	"keywords": [
 		"vscode-extension",
 		"markdown",
@@ -64,13 +66,19 @@
 				},
 				"markdown-image-converter.outputFormat": {
 					"type": "string",
-					"enum": ["png", "jpeg"],
+					"enum": [
+						"png",
+						"jpeg"
+					],
 					"default": "png",
 					"description": "Default output format"
 				},
 				"markdown-image-converter.resolution": {
 					"type": "string",
-					"enum": ["standard", "hd"],
+					"enum": [
+						"standard",
+						"hd"
+					],
 					"default": "hd",
 					"description": "Image resolution quality (standard: 1x, hd: 2x)"
 				},

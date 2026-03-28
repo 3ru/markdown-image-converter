@@ -1,6 +1,17 @@
 import * as assert from "assert";
+import * as path from "path";
 import { ImageConverter } from "../../../core/imageConverter";
-import { ConversionOptions, MarkdownSection } from "../../../types";
+import {
+	ConversionContext,
+	ConversionOptions,
+	MarkdownSection,
+} from "../../../types";
+import {
+	cleanupTestWorkspace,
+	copyTestFile,
+	createTestFile,
+	createTestWorkspace,
+} from "../testUtils";
 
 /**
  * Test suite for ImageConverter class
@@ -39,20 +50,35 @@ console.log(test);
 - Item 2
 
 ## Links and Images
-[Link](https://example.com)
-![Image](./test.png)`,
+[Link](https://example.com)`,
 			index: 1,
 		} as const,
 	};
 
-	let converter: ImageConverter;
+	const fixtureImagePath = path.resolve(
+		__dirname,
+		"../../../../images/icon.png",
+	);
 
-	setup(() => {
+	let converter: ImageConverter;
+	let testDir: string;
+	let localMarkdownPath: string;
+	let missingMarkdownPath: string;
+
+	setup(async () => {
 		converter = new ImageConverter();
+		testDir = await createTestWorkspace();
+		await copyTestFile(testDir, fixtureImagePath, "icon.png");
+		localMarkdownPath = await createTestFile(
+			testDir,
+			"local-images.md",
+			"# Local\n![Image](./icon.png)\n![Sized](./icon.png =120x)",
+		);
+		missingMarkdownPath = path.join(testDir, "missing-image.md");
 	});
 
-	teardown(() => {
-		// Clean up any resources if needed
+	teardown(async () => {
+		await cleanupTestWorkspace(testDir);
 	});
 
 	// Basic Conversion Tests
@@ -224,6 +250,45 @@ console.log(test);
 			assert.ok(
 				buffer.length > 0,
 				"Should produce valid output for large documents",
+			);
+		});
+	});
+
+	suite("Local Image Assets", () => {
+		test("should render local images from the source document directory", async () => {
+			const section: MarkdownSection = {
+				content: "# Local\n![Image](./icon.png)\n![Sized](./icon.png =120x)",
+				index: 0,
+			};
+			const options: ConversionOptions = {
+				format: "png",
+				resolution: "standard",
+			};
+			const context: ConversionContext = {
+				sourceFilePath: localMarkdownPath,
+			};
+
+			const buffer = await converter.convertToImage(section, options, context);
+
+			assert.ok(buffer.length > 0, "Should embed and render local images");
+		});
+
+		test("should fail fast when a local image is missing", async () => {
+			const section: MarkdownSection = {
+				content: "# Missing\n![Missing](./missing.png)",
+				index: 0,
+			};
+			const options: ConversionOptions = {
+				format: "png",
+				resolution: "standard",
+			};
+			const context: ConversionContext = {
+				sourceFilePath: missingMarkdownPath,
+			};
+
+			await assert.rejects(
+				() => converter.convertToImage(section, options, context),
+				/image asset could not be read/i,
 			);
 		});
 	});
