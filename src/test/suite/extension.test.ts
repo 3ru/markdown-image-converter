@@ -7,8 +7,7 @@ import * as vscode from "vscode";
 const TEST_CONFIG = {
 	dir: path.join(__dirname, "../../../test-workspace"),
 	fileNameSlug: "test",
-	timeout: 5000, // 5 seconds
-	waitTime: 3000, // Time to wait for file generation
+	timeout: 10000,
 };
 
 /**
@@ -81,6 +80,19 @@ This is a test markdown file with multiple sections.
 ## Section 2
 Some more content with **bold** and *italic* text.
 
+Inline math: $E = mc^2$
+
+$$
+\\sum_{i=1}^{n} x_i
+$$
+
+\`\`\`mermaid
+graph TD
+    A[Start] --> B{Decision}
+    B -->|Yes| C[OK]
+    B -->|No| D[Cancel]
+\`\`\`
+
 \`\`\`javascript
 console.log('Hello World');
 \`\`\`
@@ -122,17 +134,15 @@ console.log('Hello World');
 		this.timeout(TEST_CONFIG.timeout);
 		const document = await vscode.workspace.openTextDocument(testFile);
 		await vscode.window.showTextDocument(document);
-
-		// Note: executeCommand is called without await as it doesn't return a proper promise
-		vscode.commands.executeCommand("markdown-image-converter.exportPNG");
-
-		// Wait for file generation
+		const didConvert = await vscode.commands.executeCommand<boolean>(
+			"markdown-image-converter.exportPNG",
+		);
 		const expectedFile = path.join(
 			TEST_CONFIG.dir,
 			`${TEST_CONFIG.fileNameSlug}.png`,
 		);
-		await new Promise((resolve) => setTimeout(resolve, TEST_CONFIG.waitTime));
 
+		assert.strictEqual(didConvert, true, "PNG export command should succeed");
 		await verifyGeneratedImage(expectedFile, "PNG");
 	});
 
@@ -150,14 +160,17 @@ console.log('Hello World');
 		// Prepare and execute conversion
 		const document = await vscode.workspace.openTextDocument(testFile);
 		await vscode.window.showTextDocument(document);
-		vscode.commands.executeCommand("markdown-image-converter.exportJPEG");
+		const didConvert = await vscode.commands.executeCommand<boolean>(
+			"markdown-image-converter.exportJPEG",
+		);
 
 		// Verify output
 		const expectedFile = path.join(
 			TEST_CONFIG.dir,
 			`${TEST_CONFIG.fileNameSlug}.jpeg`,
 		);
-		await new Promise((resolve) => setTimeout(resolve, TEST_CONFIG.waitTime));
+
+		assert.strictEqual(didConvert, true, "JPEG export command should succeed");
 		await verifyGeneratedImage(expectedFile, "JPEG");
 	});
 
@@ -176,17 +189,31 @@ console.log('Hello World');
 
 		await configuration.update("margin", 0, vscode.ConfigurationTarget.Global);
 		await new Promise((resolve) => setTimeout(resolve, 100));
-		vscode.commands.executeCommand("markdown-image-converter.exportPNG");
-		await new Promise((resolve) => setTimeout(resolve, TEST_CONFIG.waitTime));
+		const didConvertWithoutMargin =
+			await vscode.commands.executeCommand<boolean>(
+				"markdown-image-converter.exportPNG",
+			);
 		await verifyGeneratedImage(expectedFile, "PNG");
 		const unpaddedDimensions = readPngDimensions(expectedFile);
 
 		await configuration.update("margin", 24, vscode.ConfigurationTarget.Global);
 		await new Promise((resolve) => setTimeout(resolve, 100));
-		vscode.commands.executeCommand("markdown-image-converter.exportPNG");
-		await new Promise((resolve) => setTimeout(resolve, TEST_CONFIG.waitTime));
+		const didConvertWithMargin = await vscode.commands.executeCommand<boolean>(
+			"markdown-image-converter.exportPNG",
+		);
 		await verifyGeneratedImage(expectedFile, "PNG");
 		const paddedDimensions = readPngDimensions(expectedFile);
+
+		assert.strictEqual(
+			didConvertWithoutMargin,
+			true,
+			"PNG export without margin should succeed",
+		);
+		assert.strictEqual(
+			didConvertWithMargin,
+			true,
+			"PNG export with margin should succeed",
+		);
 
 		assert.ok(
 			paddedDimensions.width > unpaddedDimensions.width,

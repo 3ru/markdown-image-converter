@@ -1,45 +1,187 @@
-name: Deploy Extension
+name: Release Extension
+
 on:
-  push:
-    tags:
-      - v*
   workflow_dispatch:
 
+permissions: {}
+
+concurrency:
+  group: release-extension
+  cancel-in-progress: false
+
 jobs:
-  upload-artifact:
+  build:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    outputs:
+      release_asset: ${{ steps.artifact.outputs.release_asset }}
+      release_sha: ${{ steps.meta.outputs.release_sha }}
+      release_tag: ${{ steps.meta.outputs.release_tag }}
+      release_version: ${{ steps.meta.outputs.release_version }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Install Node 18
-        uses: actions/setup-node@v4
+      - name: Checkout main
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
-          node-version: 18
-      - name: Install vsce
-        run: npm install -g vsce
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Ensure release runs only from main
+        run: |
+          set -euo pipefail
+          if [ "${GITHUB_REF}" != "refs/heads/main" ]; then
+            echo "Release workflow must be run from main. Current ref: ${GITHUB_REF}" >&2
+            exit 1
+          fi
+
       - name: Install pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
         with:
           version: 8
+          run_install: false
+
+      - name: Setup Node 20
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Validate release metadata
+        id: meta
+        run: |
+          set -euo pipefail
+
+          git fetch --force --tags origin
+
+          VERSION="$(node -p "require('./package.json').version")"
+          TAG="v${VERSION}"
+
+          node -e '
+            const version = process.argv[1];
+            const pattern = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
+            if (!pattern.test(version)) {
+              console.error(`Invalid semver version in package.json: ${version}`);
+              process.exit(1);
+            }
+          ' "${VERSION}"
+
+          if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
+            echo "Tag ${TAG} already exists on origin" >&2
+            exit 1
+          fi
+
+          echo "release_sha=$(git rev-parse HEAD)" >> "${GITHUB_OUTPUT}"
+          echo "release_tag=${TAG}" >> "${GITHUB_OUTPUT}"
+          echo "release_version=${VERSION}" >> "${GITHUB_OUTPUT}"
+
       - name: Install dependencies
-        run: pnpm install
-      - name: Run build
-        run: vsce package --no-dependencies
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
+          PUPPETEER_SKIP_DOWNLOAD: 1
+        run: pnpm install --frozen-lockfile
+
+      - name: Build VSIX package
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
+          PUPPETEER_SKIP_DOWNLOAD: 1
+        run: pnpm exec vsce package --no-dependencies
+
+      - name: Capture release artifact metadata
+        id: artifact
+        run: |
+          set -euo pipefail
+
+          ASSET_PATH="$(find . -maxdepth 1 -type f -name '*.vsix' -print -quit)"
+          if [ -z "${ASSET_PATH}" ]; then
+            echo "No VSIX artifact was produced" >&2
+            exit 1
+          fi
+
+          echo "release_asset=$(basename "${ASSET_PATH}")" >> "${GITHUB_OUTPUT}"
+
+      - name: Upload VSIX artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: extension
           path: "*.vsix"
+
   publish:
-    needs: upload-artifact
+    needs: build
     runs-on: ubuntu-latest
-    if: success() && startsWith(github.ref, 'refs/tags/v')
+    timeout-minutes: 20
+    permissions:
+      contents: read
     steps:
-      - name: Download artifact
-        uses: actions/download-artifact@v4
-      - name: Install vsce
-        run: npm install -g vsce
-      - name: Publish
-        run: vsce publish --packagePath $(find . -iname *.vsix)
+      - name: Checkout release commit
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          ref: ${{ needs.build.outputs.release_sha }}
+          persist-credentials: false
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+        with:
+          version: 8
+          run_install: false
+
+      - name: Setup Node 20
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Download VSIX artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: extension
+          path: release-dist
+
+      - name: Install dependencies for publish tooling
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
+          PUPPETEER_SKIP_DOWNLOAD: 1
+        run: pnpm install --frozen-lockfile
+
+      - name: Publish to Visual Studio Marketplace
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: pnpm exec vsce publish --packagePath "release-dist/${{ needs.build.outputs.release_asset }}"
+
+  create-release:
+    needs:
+      - build
+      - publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Download VSIX artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: extension
+          path: release-dist
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_ASSET: ${{ needs.build.outputs.release_asset }}
+          RELEASE_SHA: ${{ needs.build.outputs.release_sha }}
+          RELEASE_TAG: ${{ needs.build.outputs.release_tag }}
+        run: |
+          set -euo pipefail
+
+          if gh release view "${RELEASE_TAG}" >/dev/null 2>&1; then
+            echo "GitHub release ${RELEASE_TAG} already exists" >&2
+            exit 1
+          fi
+
+          gh release create "${RELEASE_TAG}" "release-dist/${RELEASE_ASSET}#${RELEASE_ASSET}" \
+            --draft \
+            --fail-on-no-commits \
+            --generate-notes \
+            --target "${RELEASE_SHA}" \
+            --title "${RELEASE_TAG}"
+
+          gh release edit "${RELEASE_TAG}" --draft=false

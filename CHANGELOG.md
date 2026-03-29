@@ -5,6 +5,18 @@ All notable changes to the "markdown-image-converter" extension will be document
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.4] - 2026-03-28
+
+### Added
+- Added support for local images referenced with relative paths
+- Added configurable export margins
+- Added built-in KaTeX rendering for inline and block math expressions
+- Added built-in Mermaid rendering for fenced diagram blocks
+
+### Fixed
+- Improved export reliability by making local image, math, and diagram rendering self-contained
+- Remediated dependency vulnerabilities
+
 ## [0.0.2] - 2025-02-22
 
 ### Added
@@ -33,5 +45,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `Markdown Image Converter: Export (png)`
   - `Markdown Image Converter: Export (jpeg)`
 
+[0.0.4]: https://github.com/3ru/markdown-image-converter/compare/v0.0.2...v0.0.4
 [0.0.2]: https://github.com/3ru/markdown-image-converter/compare/v0.0.1...v0.0.2
 [0.0.1]: https://github.com/3ru/markdown-image-converter/releases/tag/v0.0.1

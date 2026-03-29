@@ -27,23 +27,23 @@ suite("HtmlImageAssetInliner", () => {
 	});
 
 	test("should inline relative local images as data URLs", async () => {
-		const inliner = new HtmlImageAssetInliner(markdownFilePath);
+		const inliner = new HtmlImageAssetInliner();
 		const html = '<p><img src="./icon.png" alt="icon" width="250" /></p>';
 
-		const result = await inliner.inline(html);
+		const result = await inliner.inline(html, markdownFilePath);
 
 		assert.match(result, /src="data:image\/png;base64,[^"]+"/);
 		assert.match(result, /width="250"/);
 	});
 
 	test("should inline multiple local images without corrupting HTML", async () => {
-		const inliner = new HtmlImageAssetInliner(markdownFilePath);
+		const inliner = new HtmlImageAssetInliner();
 		const html = [
 			'<p><img src="./icon.png" alt="one" /></p>',
 			'<p><a href="https://example.com"><img src="./icon.png" alt="two" /></a></p>',
 		].join("");
 
-		const result = await inliner.inline(html);
+		const result = await inliner.inline(html, markdownFilePath);
 		const embeddedImageMatches = result.match(/data:image\/png;base64,/g) ?? [];
 
 		assert.strictEqual(embeddedImageMatches.length, 2);
@@ -53,13 +53,13 @@ suite("HtmlImageAssetInliner", () => {
 	});
 
 	test("should leave remote and already embedded images untouched", async () => {
-		const inliner = new HtmlImageAssetInliner(markdownFilePath);
+		const inliner = new HtmlImageAssetInliner();
 		const html = [
 			'<p><img src="https://example.com/icon.png" alt="remote" /></p>',
 			'<p><img src="data:image/png;base64,abc123" alt="embedded" /></p>',
 		].join("");
 
-		const result = await inliner.inline(html);
+		const result = await inliner.inline(html, markdownFilePath);
 
 		assert.match(result, /https:\/\/example.com\/icon\.png/);
 		assert.match(result, /data:image\/png;base64,abc123/);
@@ -75,10 +75,14 @@ suite("HtmlImageAssetInliner", () => {
 	});
 
 	test("should reject unsupported image URL protocols", async () => {
-		const inliner = new HtmlImageAssetInliner(markdownFilePath);
+		const inliner = new HtmlImageAssetInliner();
 
 		await assert.rejects(
-			() => inliner.inline('<img src="javascript:alert(1)" alt="icon" />'),
+			() =>
+				inliner.inline(
+					'<img src="javascript:alert(1)" alt="icon" />',
+					markdownFilePath,
+				),
 			/unsupported image url protocol/i,
 		);
 	});

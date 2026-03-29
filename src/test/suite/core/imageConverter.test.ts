@@ -53,6 +53,25 @@ console.log(test);
 [Link](https://example.com)`,
 			index: 1,
 		} as const,
+		mathSection: {
+			content: `# Math Document
+Inline math: $E=mc^2$
+
+$$
+\\sum_{i=1}^{n} x_i
+$$`,
+			index: 2,
+		} as const,
+		mermaidSection: {
+			content: `# Mermaid Document
+\`\`\`mermaid
+graph TD
+    A[Start] --> B{Decision}
+    B -->|Yes| C[OK]
+    B -->|No| D[Cancel]
+\`\`\``,
+			index: 3,
+		} as const,
 	};
 
 	const fixtureImagePath = path.resolve(
@@ -115,6 +134,37 @@ console.log(test);
 			assert.ok(
 				buffer.length > 0,
 				"Should successfully convert complex markdown content",
+			);
+		});
+
+		test("should render inline and block math expressions", async () => {
+			const options = {
+				format: "png" as const,
+				resolution: "standard" as const,
+			};
+
+			const buffer = await converter.convertToImage(
+				fixtures.mathSection,
+				options,
+			);
+
+			assert.ok(buffer.length > 0, "Should render markdown with KaTeX content");
+		});
+
+		test("should render Mermaid diagrams", async () => {
+			const options = {
+				format: "png" as const,
+				resolution: "standard" as const,
+			};
+
+			const buffer = await converter.convertToImage(
+				fixtures.mermaidSection,
+				options,
+			);
+
+			assert.ok(
+				buffer.length > 0,
+				"Should render markdown with Mermaid diagrams",
 			);
 		});
 	});
@@ -271,6 +321,43 @@ console.log(test);
 			const buffer = await converter.convertToImage(section, options, context);
 
 			assert.ok(buffer.length > 0, "Should embed and render local images");
+		});
+
+		test("should reuse a conversion session across multiple sections", async () => {
+			const session = converter.createSession({
+				sourceFilePath: localMarkdownPath,
+			});
+
+			try {
+				const first = await session.convertSection(
+					{
+						content: "# First\n![Image](./icon.png)",
+						index: 0,
+					},
+					{
+						format: "png",
+						resolution: "standard",
+					},
+				);
+				const second = await session.convertSection(
+					{
+						content: "# Second\n![Sized](./icon.png =120x)",
+						index: 1,
+					},
+					{
+						format: "png",
+						resolution: "standard",
+					},
+				);
+
+				assert.ok(first.length > 0, "First section should render successfully");
+				assert.ok(
+					second.length > 0,
+					"Second section should render successfully in the same session",
+				);
+			} finally {
+				await session.dispose();
+			}
 		});
 
 		test("should fail fast when a local image is missing", async () => {
