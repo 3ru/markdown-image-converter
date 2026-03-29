@@ -1,0 +1,4 @@
+# Require explicit review for release-sensitive files.
+/.github/workflows/ @3ru
+/package.json @3ru
+/pnpm-lock.yaml @3ru
