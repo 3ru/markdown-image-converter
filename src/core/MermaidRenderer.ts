@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import type { Page } from "puppeteer-core";
+import type { RenderPass, RenderPipelineContext } from "./renderPipeline";
 
 const MERMAID_CONTAINER_CLASS = "mic-mermaid";
 const MERMAID_STYLES = `
@@ -28,8 +29,9 @@ interface MermaidRenderSummary {
  * Renders Mermaid diagrams locally in the page so exports do not depend on
  * Zenn's remote embed server or arbitrary sleep-based waits.
  */
-export class MermaidRenderer {
+export class MermaidRenderer implements RenderPass {
 	private static runtimeScriptPromise: Promise<string> | null = null;
+	public readonly name = "mermaid";
 
 	public createEmbed(source: string): string {
 		return `<span class="embed-block zenn-embedded zenn-embedded-mermaid ${MERMAID_CONTAINER_CLASS}">${this.escapeHtml(
@@ -37,8 +39,15 @@ export class MermaidRenderer {
 		)}</span>`;
 	}
 
-	public getStyles(): string {
+	public getStyles(_context?: RenderPipelineContext): string {
 		return MERMAID_STYLES;
+	}
+
+	public async preparePage(
+		page: Page,
+		_context: RenderPipelineContext,
+	): Promise<void> {
+		await this.render(page);
 	}
 
 	public async render(page: Page): Promise<void> {

@@ -2,6 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 import katex from "katex";
 import { parse } from "node-html-parser";
+import type { RenderPass, RenderPipelineContext } from "./renderPipeline";
 
 const DEFAULT_KATEX_MACROS = {
 	"\\RR": "\\mathbb{R}",
@@ -19,8 +20,9 @@ interface FontSource {
  * Replaces Zenn's embed-katex placeholders with static KaTeX HTML and inlines
  * the KaTeX stylesheet so exported images render deterministically offline.
  */
-export class KatexRenderer {
+export class KatexRenderer implements RenderPass {
 	private static stylesheetPromise: Promise<string> | null = null;
+	public readonly name = "katex";
 
 	public render(html: string): string {
 		const document = parse(html, {
@@ -43,7 +45,14 @@ export class KatexRenderer {
 		return document.toString();
 	}
 
-	public async getStyles(): Promise<string> {
+	public transformHtml(
+		html: string,
+		_context: RenderPipelineContext,
+	): Promise<string> | string {
+		return this.render(html);
+	}
+
+	public async getStyles(_context?: RenderPipelineContext): Promise<string> {
 		if (!KatexRenderer.stylesheetPromise) {
 			KatexRenderer.stylesheetPromise = this.buildStylesheet();
 		}

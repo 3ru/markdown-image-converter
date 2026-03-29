@@ -8,9 +8,11 @@ import {
 	MarkdownSection,
 	Resolution,
 } from "../types";
+import { AssetResolver } from "./AssetResolver";
 import { HtmlImageAssetInliner } from "./HtmlImageAssetInliner";
 import { KatexRenderer } from "./KatexRenderer";
 import { MermaidRenderer } from "./MermaidRenderer";
+import type { RenderPass, RenderPipelineContext } from "./renderPipeline";
 
 // Import CSS with a try-catch block to handle test environment
 let zennCss = "";
@@ -22,15 +24,13 @@ try {
 }
 
 /**
- * Handles the conversion of markdown content to images using Puppeteer.
- * Uses Zenn's markdown styling for consistent and beautiful output.
+ * Handles browser lifecycle and session creation for markdown-to-image exports.
+ * Rendering work is delegated to request-scoped sessions so large split exports
+ * can reuse caches and page resources without coupling every syntax to this class.
  */
 export class ImageConverter {
 	private static browser: puppeteer.Browser | null = null;
 	private static browserLaunchPromise: Promise<puppeteer.Browser> | null = null;
-
-	private readonly katexRenderer = new KatexRenderer();
-	private readonly mermaidRenderer = new MermaidRenderer();
 
 	/**
 	 * Default styles loaded from Zenn's CSS or fallback styles.
@@ -38,13 +38,36 @@ export class ImageConverter {
 	 */
 	private readonly defaultStyles = zennCss;
 
+	public createSession(
+		context: ConversionContext = {},
+	): ImageConversionSession {
+		return new ImageConversionSession(this, context);
+	}
+
+	/**
+	 * Convenience API for one-off conversions.
+	 * Multi-section exports should prefer a shared session so assets and pages can
+	 * be reused within the same export request.
+	 */
+	public async convertToImage(
+		section: MarkdownSection,
+		options: ConversionOptions,
+		context: ConversionContext = {},
+	): Promise<Uint8Array> {
+		const session = this.createSession(context);
+
+		try {
+			return await session.convertSection(section, options);
+		} finally {
+			await session.dispose();
+		}
+	}
+
 	/**
 	 * Determines the image scale factor based on the requested resolution.
 	 * Higher scale factors result in sharper images but larger file sizes.
-	 * @param resolution - The desired output resolution
-	 * @returns The scale factor to be used for image generation
 	 */
-	private getScaleFactor(resolution?: Resolution): number {
+	public getScaleFactor(resolution?: Resolution): number {
 		switch (resolution) {
 			case "standard":
 				return 1;
@@ -59,44 +82,7 @@ export class ImageConverter {
 		}
 	}
 
-	/**
-	 * Converts a markdown section to an image buffer.
-	 * @param section - The markdown section to convert
-	 * @param options - Conversion options including format and resolution
-	 * @param context - Document context used for resolving local assets
-	 * @returns A Promise resolving to the image buffer
-	 */
-	public async convertToImage(
-		section: MarkdownSection,
-		options: ConversionOptions,
-		context: ConversionContext = {},
-	): Promise<Uint8Array> {
-		const content = await this.renderContent(section.content, context);
-		const html = await this.generateDocument(content, this.getMargin());
-		return this.captureImage(html, options);
-	}
-
-	/**
-	 * Renders Markdown to HTML and inlines local image assets as data URLs.
-	 */
-	private async renderContent(
-		markdown: string,
-		context: ConversionContext,
-	): Promise<string> {
-		const rawContent = await Promise.resolve(
-			markdownToHtml(markdown, {
-				embedOrigin: "https://embed.zenn.studio",
-				customEmbed: {
-					mermaid: (source) => this.mermaidRenderer.createEmbed(source),
-				},
-			}),
-		);
-		const assetInliner = new HtmlImageAssetInliner(context.sourceFilePath);
-		const contentWithAssets = await assetInliner.inline(rawContent);
-		return this.katexRenderer.render(contentWithAssets);
-	}
-
-	private getMargin(): number {
+	public getMargin(): number {
 		const config = vscode.workspace.getConfiguration(
 			"markdown-image-converter",
 		);
@@ -109,27 +95,24 @@ export class ImageConverter {
 		return Math.max(0, configuredMargin);
 	}
 
-	/**
-	 * Generates the full HTML document used for screenshot rendering.
-	 * @param content - The rendered HTML fragment
-	 * @param margin - The margin around the rendered content in pixels
-	 * @returns HTML string with applied styles
-	 */
-	private async generateDocument(
+	public buildDocument(
 		content: string,
+		passStyles: string[],
 		margin: number,
-	): Promise<string> {
-		const katexStyles = await this.katexRenderer.getStyles();
-		const mermaidStyles = this.mermaidRenderer.getStyles();
+	): string {
+		const embeddedStyles = [
+			this.defaultStyles,
+			...passStyles.filter((style) => style.trim().length > 0),
+		]
+			.map((style) => `<style>${style}</style>`)
+			.join("\n");
 
 		return `
       <!DOCTYPE html>
       <html>
         <head>
           <meta charset="UTF-8">
-          <style>${this.defaultStyles}</style>
-          <style>${katexStyles}</style>
-          <style>${mermaidStyles}</style>
+          ${embeddedStyles}
           <style>
             body {
               margin: 0;
@@ -155,95 +138,12 @@ export class ImageConverter {
     `;
 	}
 
-	/**
-	 * Captures the rendered HTML as an image using Puppeteer.
-	 * @param html - The HTML content to capture
-	 * @param options - Image capture options
-	 * @returns A Promise resolving to the image buffer
-	 */
-	private async captureImage(
-		html: string,
-		options: ConversionOptions,
-	): Promise<Uint8Array> {
+	public async createPage(): Promise<puppeteer.Page> {
 		const browser = await this.getBrowser();
-		const page = await browser.newPage();
-
-		try {
-			await page.setViewport({
-				width: 1200,
-				height: 800,
-				deviceScaleFactor: this.getScaleFactor(options.resolution),
-			});
-
-			await page.setContent(html, { waitUntil: "domcontentloaded" });
-			await page.waitForSelector(".render-frame");
-			await this.mermaidRenderer.render(page);
-			await page.evaluate(async () => {
-				await document.fonts.ready;
-			});
-			await this.ensureImagesLoaded(page);
-
-			const element = await page.$(".render-frame");
-			if (!element) {
-				throw new Error("Failed to find content element");
-			}
-
-			const buffer = await element.screenshot({
-				type: options.format,
-				quality: options.format === "jpeg" ? 90 : undefined,
-				omitBackground: false,
-			});
-
-			return buffer as Uint8Array;
-		} finally {
-			await page.close();
-		}
+		return browser.newPage();
 	}
 
-	private async getBrowser(): Promise<puppeteer.Browser> {
-		if (ImageConverter.browser) {
-			return ImageConverter.browser;
-		}
-
-		if (!ImageConverter.browserLaunchPromise) {
-			ImageConverter.browserLaunchPromise = this.launchBrowser();
-		}
-
-		try {
-			const browser = await ImageConverter.browserLaunchPromise;
-			ImageConverter.browser = browser;
-			ImageConverter.browserLaunchPromise = null;
-			return browser;
-		} catch (error) {
-			ImageConverter.browserLaunchPromise = null;
-			throw error;
-		}
-	}
-
-	private async launchBrowser(): Promise<puppeteer.Browser> {
-		const config = vscode.workspace.getConfiguration(
-			"markdown-image-converter",
-		);
-		const executablePath =
-			config.get<string>("executablePath") || puppeteerExecutablePath();
-
-		const browser = await puppeteer.launch({
-			headless: true,
-			args: ["--no-sandbox", "--disable-setuid-sandbox"],
-			executablePath,
-		});
-
-		browser.once("disconnected", () => {
-			if (ImageConverter.browser === browser) {
-				ImageConverter.browser = null;
-			}
-			ImageConverter.browserLaunchPromise = null;
-		});
-
-		return browser;
-	}
-
-	private async ensureImagesLoaded(page: puppeteer.Page): Promise<void> {
+	public async ensureImagesLoaded(page: puppeteer.Page): Promise<void> {
 		const selector = ".znc img";
 
 		try {
@@ -298,6 +198,49 @@ export class ImageConverter {
 		}
 	}
 
+	private async getBrowser(): Promise<puppeteer.Browser> {
+		if (ImageConverter.browser) {
+			return ImageConverter.browser;
+		}
+
+		if (!ImageConverter.browserLaunchPromise) {
+			ImageConverter.browserLaunchPromise = this.launchBrowser();
+		}
+
+		try {
+			const browser = await ImageConverter.browserLaunchPromise;
+			ImageConverter.browser = browser;
+			ImageConverter.browserLaunchPromise = null;
+			return browser;
+		} catch (error) {
+			ImageConverter.browserLaunchPromise = null;
+			throw error;
+		}
+	}
+
+	private async launchBrowser(): Promise<puppeteer.Browser> {
+		const config = vscode.workspace.getConfiguration(
+			"markdown-image-converter",
+		);
+		const executablePath =
+			config.get<string>("executablePath") || puppeteerExecutablePath();
+
+		const browser = await puppeteer.launch({
+			headless: true,
+			args: ["--no-sandbox", "--disable-setuid-sandbox"],
+			executablePath,
+		});
+
+		browser.once("disconnected", () => {
+			if (ImageConverter.browser === browser) {
+				ImageConverter.browser = null;
+			}
+			ImageConverter.browserLaunchPromise = null;
+		});
+
+		return browser;
+	}
+
 	/**
 	 * Cleans up resources when the extension is deactivated
 	 */
@@ -316,5 +259,153 @@ export class ImageConverter {
 		}
 
 		await browser.close();
+	}
+}
+
+/**
+ * A request-scoped rendering session that shares cached assets and a Puppeteer
+ * page across sections within the same export command.
+ */
+export class ImageConversionSession {
+	private readonly assetResolver = new AssetResolver();
+	private readonly mermaidRenderer = new MermaidRenderer();
+	private readonly renderPasses: RenderPass[] = [
+		new HtmlImageAssetInliner(this.assetResolver),
+		new KatexRenderer(),
+		this.mermaidRenderer,
+	];
+	private readonly pipelineContext: RenderPipelineContext;
+	private pagePromise: Promise<puppeteer.Page> | null = null;
+
+	constructor(
+		private readonly converter: ImageConverter,
+		conversionContext: ConversionContext = {},
+	) {
+		this.pipelineContext = {
+			assetResolver: this.assetResolver,
+			conversion: conversionContext,
+		};
+	}
+
+	public async convertSection(
+		section: MarkdownSection,
+		options: ConversionOptions,
+	): Promise<Uint8Array> {
+		let content = await Promise.resolve(
+			markdownToHtml(section.content, {
+				embedOrigin: "https://embed.zenn.studio",
+				customEmbed: {
+					mermaid: (source) => this.mermaidRenderer.createEmbed(source),
+				},
+			}),
+		);
+
+		content = await this.applyHtmlTransforms(content);
+		const styles = await this.collectStyles();
+		const html = this.converter.buildDocument(
+			content,
+			styles,
+			this.converter.getMargin(),
+		);
+
+		return this.captureDocument(html, options);
+	}
+
+	public async dispose(): Promise<void> {
+		if (!this.pagePromise) {
+			return;
+		}
+
+		const activePagePromise = this.pagePromise;
+		this.pagePromise = null;
+		const page = await activePagePromise.catch(() => null);
+
+		if (page && !page.isClosed()) {
+			await page.close();
+		}
+	}
+
+	private async applyHtmlTransforms(html: string): Promise<string> {
+		let transformedHtml = html;
+
+		for (const renderPass of this.renderPasses) {
+			if (!renderPass.transformHtml) {
+				continue;
+			}
+
+			transformedHtml = await renderPass.transformHtml(
+				transformedHtml,
+				this.pipelineContext,
+			);
+		}
+
+		return transformedHtml;
+	}
+
+	private async collectStyles(): Promise<string[]> {
+		const styles: string[] = [];
+
+		for (const renderPass of this.renderPasses) {
+			if (!renderPass.getStyles) {
+				continue;
+			}
+
+			const style = await renderPass.getStyles(this.pipelineContext);
+			if (style.trim().length > 0) {
+				styles.push(style);
+			}
+		}
+
+		return styles;
+	}
+
+	private async captureDocument(
+		html: string,
+		options: ConversionOptions,
+	): Promise<Uint8Array> {
+		const page = await this.getPage();
+
+		await page.setViewport({
+			width: 1200,
+			height: 800,
+			deviceScaleFactor: this.converter.getScaleFactor(options.resolution),
+		});
+
+		await page.setContent(html, { waitUntil: "domcontentloaded" });
+		await page.waitForSelector(".render-frame");
+
+		for (const renderPass of this.renderPasses) {
+			if (!renderPass.preparePage) {
+				continue;
+			}
+
+			await renderPass.preparePage(page, this.pipelineContext);
+		}
+
+		await page.evaluate(async () => {
+			await document.fonts.ready;
+		});
+		await this.converter.ensureImagesLoaded(page);
+
+		const element = await page.$(".render-frame");
+		if (!element) {
+			throw new Error("Failed to find content element");
+		}
+
+		const buffer = await element.screenshot({
+			type: options.format,
+			quality: options.format === "jpeg" ? 90 : undefined,
+			omitBackground: false,
+		});
+
+		return buffer as Uint8Array;
+	}
+
+	private async getPage(): Promise<puppeteer.Page> {
+		if (!this.pagePromise) {
+			this.pagePromise = this.converter.createPage();
+		}
+
+		return this.pagePromise;
 	}
 }

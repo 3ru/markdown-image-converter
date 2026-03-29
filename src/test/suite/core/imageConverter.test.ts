@@ -323,6 +323,43 @@ graph TD
 			assert.ok(buffer.length > 0, "Should embed and render local images");
 		});
 
+		test("should reuse a conversion session across multiple sections", async () => {
+			const session = converter.createSession({
+				sourceFilePath: localMarkdownPath,
+			});
+
+			try {
+				const first = await session.convertSection(
+					{
+						content: "# First\n![Image](./icon.png)",
+						index: 0,
+					},
+					{
+						format: "png",
+						resolution: "standard",
+					},
+				);
+				const second = await session.convertSection(
+					{
+						content: "# Second\n![Sized](./icon.png =120x)",
+						index: 1,
+					},
+					{
+						format: "png",
+						resolution: "standard",
+					},
+				);
+
+				assert.ok(first.length > 0, "First section should render successfully");
+				assert.ok(
+					second.length > 0,
+					"Second section should render successfully in the same session",
+				);
+			} finally {
+				await session.dispose();
+			}
+		});
+
 		test("should fail fast when a local image is missing", async () => {
 			const section: MarkdownSection = {
 				content: "# Missing\n![Missing](./missing.png)",

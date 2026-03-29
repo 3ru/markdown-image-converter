@@ -66,37 +66,38 @@ export function activate(context: vscode.ExtensionContext) {
 							const sections = processor.splitContent(splitter);
 							const totalSections = sections.length;
 							const isSplit = totalSections > 1;
+							const context: ConversionContext = {
+								sourceFilePath: editor.document.fileName,
+							};
+							const session = converter.createSession(context);
 
-							// Convert each section to an image
-							for (let i = 0; i < sections.length; i++) {
-								const section = sections[i];
-								progress.report({
-									message: `Processing section ${i + 1}/${totalSections}`,
-									increment: 100 / totalSections,
-								});
+							try {
+								// Convert each section to an image
+								for (let i = 0; i < sections.length; i++) {
+									const section = sections[i];
+									progress.report({
+										message: `Processing section ${i + 1}/${totalSections}`,
+										increment: 100 / totalSections,
+									});
 
-								const options: ConversionOptions = {
-									format,
-									splitter,
-									resolution,
-								};
-								const context: ConversionContext = {
-									sourceFilePath: editor.document.fileName,
-								};
+									const options: ConversionOptions = {
+										format,
+										splitter,
+										resolution,
+									};
 
-								// Convert markdown to image and save
-								const buffer = await converter.convertToImage(
-									section,
-									options,
-									context,
-								);
-								await fileService.saveImage(
-									buffer,
-									editor.document.fileName,
-									section.index,
-									format,
-									isSplit,
-								);
+									// Convert markdown to image and save
+									const buffer = await session.convertSection(section, options);
+									await fileService.saveImage(
+										buffer,
+										editor.document.fileName,
+										section.index,
+										format,
+										isSplit,
+									);
+								}
+							} finally {
+								await session.dispose();
 							}
 						},
 					);

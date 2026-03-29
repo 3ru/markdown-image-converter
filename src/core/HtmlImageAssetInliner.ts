@@ -1,23 +1,5 @@
-import * as fs from "fs";
-import * as path from "path";
-import { fileURLToPath } from "url";
-
-const EMBEDDED_IMAGE_PROTOCOLS = new Set(["data:", "http:", "https:"]);
-const WINDOWS_ABSOLUTE_PATH = /^[a-zA-Z]:[\\/]/;
-
-const MIME_TYPES_BY_EXTENSION: Record<string, string> = {
-	".avif": "image/avif",
-	".bmp": "image/bmp",
-	".gif": "image/gif",
-	".ico": "image/x-icon",
-	".jpeg": "image/jpeg",
-	".jpg": "image/jpeg",
-	".png": "image/png",
-	".svg": "image/svg+xml",
-	".tif": "image/tiff",
-	".tiff": "image/tiff",
-	".webp": "image/webp",
-};
+import { AssetResolver } from "./AssetResolver";
+import type { RenderPass, RenderPipelineContext } from "./renderPipeline";
 
 interface HtmlTagMatch {
 	end: number;
@@ -42,22 +24,27 @@ interface TextReplacement {
  * This keeps the screenshot pipeline independent from local HTTP servers and
  * makes local assets deterministic across environments.
  */
-export class HtmlImageAssetInliner {
-	private readonly assetCache = new Map<string, string>();
-	private readonly sourceDirectory?: string;
+export class HtmlImageAssetInliner implements RenderPass {
+	public readonly name = "local-image-assets";
 
-	constructor(sourceFilePath?: string) {
-		this.sourceDirectory = sourceFilePath
-			? path.dirname(path.resolve(sourceFilePath))
-			: undefined;
-	}
+	constructor(private readonly assetResolver = new AssetResolver()) {}
 
-	public async inline(html: string): Promise<string> {
-		const replacements = await this.collectReplacements(html);
+	public async inline(html: string, sourceFilePath?: string): Promise<string> {
+		const replacements = await this.collectReplacements(html, sourceFilePath);
 		return this.applyReplacements(html, replacements);
 	}
 
-	private async collectReplacements(html: string): Promise<TextReplacement[]> {
+	public async transformHtml(
+		html: string,
+		context: RenderPipelineContext,
+	): Promise<string> {
+		return this.inline(html, context.conversion.sourceFilePath);
+	}
+
+	private async collectReplacements(
+		html: string,
+		sourceFilePath?: string,
+	): Promise<TextReplacement[]> {
 		const replacements: TextReplacement[] = [];
 
 		for (const tag of this.findImageTags(html)) {
@@ -66,7 +53,10 @@ export class HtmlImageAssetInliner {
 				continue;
 			}
 
-			const resolvedSource = await this.resolveSource(sourceAttribute.value);
+			const resolvedSource = await this.assetResolver.resolveImageSource(
+				sourceAttribute.value,
+				sourceFilePath,
+			);
 			if (resolvedSource === sourceAttribute.value) {
 				continue;
 			}
@@ -265,97 +255,5 @@ export class HtmlImageAssetInliner {
 
 	private isWhitespace(character: string): boolean {
 		return /\s/.test(character);
-	}
-
-	private async resolveSource(source: string): Promise<string> {
-		if (WINDOWS_ABSOLUTE_PATH.test(source)) {
-			return this.readFileAsDataUrl(source);
-		}
-
-		if (source.startsWith("//")) {
-			return source;
-		}
-
-		try {
-			const url = new URL(source);
-			if (EMBEDDED_IMAGE_PROTOCOLS.has(url.protocol)) {
-				return source;
-			}
-
-			if (url.protocol === "file:") {
-				return this.readFileAsDataUrl(fileURLToPath(url));
-			}
-
-			throw new Error(
-				`Unsupported image URL protocol "${url.protocol}" in "${source}"`,
-			);
-		} catch (error) {
-			if (!(error instanceof TypeError)) {
-				throw error;
-			}
-		}
-
-		if (!this.sourceDirectory) {
-			throw new Error(
-				`Cannot resolve local image path "${source}" without a source file path`,
-			);
-		}
-
-		const pathname = this.decodePathname(this.stripQueryAndHash(source));
-		const absolutePath = path.isAbsolute(pathname)
-			? pathname
-			: path.resolve(this.sourceDirectory, pathname);
-		return this.readFileAsDataUrl(absolutePath);
-	}
-
-	private stripQueryAndHash(source: string): string {
-		const hashIndex = source.indexOf("#");
-		const queryIndex = source.indexOf("?");
-		const cutoffCandidates = [hashIndex, queryIndex].filter(
-			(index) => index >= 0,
-		);
-
-		if (cutoffCandidates.length === 0) {
-			return source;
-		}
-
-		return source.slice(0, Math.min(...cutoffCandidates));
-	}
-
-	private decodePathname(pathname: string): string {
-		try {
-			return decodeURIComponent(pathname);
-		} catch {
-			return pathname;
-		}
-	}
-
-	private async readFileAsDataUrl(filePath: string): Promise<string> {
-		const normalizedPath = path.normalize(path.resolve(filePath));
-		const cachedAsset = this.assetCache.get(normalizedPath);
-		if (cachedAsset) {
-			return cachedAsset;
-		}
-
-		let fileContents: Buffer;
-		try {
-			fileContents = await fs.promises.readFile(normalizedPath);
-		} catch (error) {
-			throw new Error(
-				`Image asset could not be read from "${normalizedPath}": ${
-					error instanceof Error ? error.message : "Unknown error"
-				}`,
-			);
-		}
-
-		const mimeType = this.getMimeType(normalizedPath);
-		const dataUrl = `data:${mimeType};base64,${fileContents.toString("base64")}`;
-		this.assetCache.set(normalizedPath, dataUrl);
-		return dataUrl;
-	}
-
-	private getMimeType(filePath: string): string {
-		const extension = path.extname(filePath).toLowerCase();
-		return MIME_TYPES_BY_EXTENSION[extension] ?? "application/octet-stream";
 	}
 }
