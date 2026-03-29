@@ -56,7 +56,6 @@ This extension contributes the following settings:
 ## 🔍 Known Issues @ Roadmap
 
 - Large markdown files may take longer to convert
-- Katex, mermaid, other embeded elements rendering is under development
 
 
 ## 📚 Resources
