@@ -1,4 +1,3 @@
-import { executablePath as puppeteerExecutablePath } from "puppeteer";
 import * as puppeteer from "puppeteer-core";
 import * as vscode from "vscode";
 import markdownToHtml from "zenn-markdown-html";
@@ -12,6 +11,7 @@ import { AssetResolver } from "./AssetResolver";
 import { HtmlImageAssetInliner } from "./HtmlImageAssetInliner";
 import { KatexRenderer } from "./KatexRenderer";
 import { MermaidRenderer } from "./MermaidRenderer";
+import { resolveBrowserExecutablePath } from "./browserExecutable";
 import type { RenderPass, RenderPipelineContext } from "./renderPipeline";
 
 // Import CSS with a try-catch block to handle test environment
@@ -222,8 +222,9 @@ export class ImageConverter {
 		const config = vscode.workspace.getConfiguration(
 			"markdown-image-converter",
 		);
-		const executablePath =
-			config.get<string>("executablePath") || puppeteerExecutablePath();
+		const executablePath = resolveBrowserExecutablePath(
+			config.get<string>("executablePath"),
+		);
 
 		const browser = await puppeteer.launch({
 			headless: true,

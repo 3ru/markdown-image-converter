@@ -1,7 +1,7 @@
 import * as assert from "assert";
-import { executablePath as puppeteerExecutablePath } from "puppeteer";
 import * as puppeteer from "puppeteer-core";
 import { MermaidRenderer } from "../../../core/MermaidRenderer";
+import { resolveBrowserExecutablePath } from "../../../core/browserExecutable";
 
 suite("MermaidRenderer", () => {
 	const renderer = new MermaidRenderer();
@@ -10,7 +10,7 @@ suite("MermaidRenderer", () => {
 		const browser = await puppeteer.launch({
 			headless: true,
 			args: ["--no-sandbox", "--disable-setuid-sandbox"],
-			executablePath: puppeteerExecutablePath(),
+			executablePath: resolveBrowserExecutablePath(),
 		});
 		const page = await browser.newPage();
 

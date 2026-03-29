@@ -40,7 +40,6 @@ jobs:
         node-version: [20.x]
         include:
           - os: ubuntu-latest
-            playwright-deps: chromium-browser
             xvfb: true
         #   - os: windows-latest
         #     playwright-deps: ""
@@ -53,7 +52,6 @@ jobs:
     timeout-minutes: 15
 
     env:
-      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
       TEST_WORKSPACE: ${{ github.workspace }}/test-workspace
 
     steps:
@@ -75,16 +73,32 @@ jobs:
           # cache: "pnpm"
 
       # Install OS-specific dependencies
+      # Note: Do NOT install chromium-browser via apt it installs a snap stub
+      # that fails in CI containers. Puppeteer's bundled Chrome for Testing is used instead.
       - name: Install Linux dependencies
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y ${{ matrix.playwright-deps }} xvfb libxkbfile-dev libsecret-1-0
+          sudo apt-get install -y xvfb libxkbfile-dev libsecret-1-0
+
+      # Ubuntu 24.04+ ships an AppArmor profile that blocks Chrome for Testing
+      # from using user namespaces. This is the same workaround used by Puppeteer's
+      # own CI: https://github.com/puppeteer/puppeteer/pull/13196
+      - name: Disable AppArmor user namespace restriction
+        if: matrix.os == 'ubuntu-latest'
+        run: echo 0 | sudo tee /proc/sys/kernel/apparmor_restrict_unprivileged_userns
 
       - name: Install macOS dependencies
         if: matrix.os == 'macos-latest'
         run: |
           brew install --cask chromium
+
+      # Cache Puppeteer's bundled Chrome for Testing (~280MB)
+      - name: Cache Puppeteer browsers
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: ~/.cache/puppeteer
+          key: puppeteer-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
 
       # Create test workspace
       - name: Create test directories
