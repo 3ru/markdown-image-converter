@@ -126,6 +126,7 @@
 	},
 	"dependencies": {
 		"katex": "0.16.11",
+		"mermaid": "11.11.0",
 		"node-html-parser": "7.0.1",
 		"puppeteer": "^24.2.1",
 		"puppeteer-core": "^24.2.0",

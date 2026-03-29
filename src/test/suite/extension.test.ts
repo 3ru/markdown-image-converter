@@ -86,6 +86,13 @@ $$
 \\sum_{i=1}^{n} x_i
 $$
 
+\`\`\`mermaid
+graph TD
+    A[Start] --> B{Decision}
+    B -->|Yes| C[OK]
+    B -->|No| D[Cancel]
+\`\`\`
+
 \`\`\`javascript
 console.log('Hello World');
 \`\`\`
@@ -182,17 +189,31 @@ console.log('Hello World');
 
 		await configuration.update("margin", 0, vscode.ConfigurationTarget.Global);
 		await new Promise((resolve) => setTimeout(resolve, 100));
-		vscode.commands.executeCommand("markdown-image-converter.exportPNG");
-		await new Promise((resolve) => setTimeout(resolve, TEST_CONFIG.waitTime));
+		const didConvertWithoutMargin =
+			await vscode.commands.executeCommand<boolean>(
+				"markdown-image-converter.exportPNG",
+			);
 		await verifyGeneratedImage(expectedFile, "PNG");
 		const unpaddedDimensions = readPngDimensions(expectedFile);
 
 		await configuration.update("margin", 24, vscode.ConfigurationTarget.Global);
 		await new Promise((resolve) => setTimeout(resolve, 100));
-		vscode.commands.executeCommand("markdown-image-converter.exportPNG");
-		await new Promise((resolve) => setTimeout(resolve, TEST_CONFIG.waitTime));
+		const didConvertWithMargin = await vscode.commands.executeCommand<boolean>(
+			"markdown-image-converter.exportPNG",
+		);
 		await verifyGeneratedImage(expectedFile, "PNG");
 		const paddedDimensions = readPngDimensions(expectedFile);
+
+		assert.strictEqual(
+			didConvertWithoutMargin,
+			true,
+			"PNG export without margin should succeed",
+		);
+		assert.strictEqual(
+			didConvertWithMargin,
+			true,
+			"PNG export with margin should succeed",
+		);
 
 		assert.ok(
 			paddedDimensions.width > unpaddedDimensions.width,

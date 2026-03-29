@@ -62,6 +62,16 @@ $$
 $$`,
 			index: 2,
 		} as const,
+		mermaidSection: {
+			content: `# Mermaid Document
+\`\`\`mermaid
+graph TD
+    A[Start] --> B{Decision}
+    B -->|Yes| C[OK]
+    B -->|No| D[Cancel]
+\`\`\``,
+			index: 3,
+		} as const,
 	};
 
 	const fixtureImagePath = path.resolve(
@@ -139,6 +149,23 @@ $$`,
 			);
 
 			assert.ok(buffer.length > 0, "Should render markdown with KaTeX content");
+		});
+
+		test("should render Mermaid diagrams", async () => {
+			const options = {
+				format: "png" as const,
+				resolution: "standard" as const,
+			};
+
+			const buffer = await converter.convertToImage(
+				fixtures.mermaidSection,
+				options,
+			);
+
+			assert.ok(
+				buffer.length > 0,
+				"Should render markdown with Mermaid diagrams",
+			);
 		});
 	});
 
