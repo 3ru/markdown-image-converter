@@ -9,6 +9,8 @@ import {
 	Resolution,
 } from "../types";
 import { HtmlImageAssetInliner } from "./HtmlImageAssetInliner";
+import { KatexRenderer } from "./KatexRenderer";
+import { MermaidRenderer } from "./MermaidRenderer";
 
 // Import CSS with a try-catch block to handle test environment
 let zennCss = "";
@@ -26,6 +28,9 @@ try {
 export class ImageConverter {
 	private static browser: puppeteer.Browser | null = null;
 	private static browserLaunchPromise: Promise<puppeteer.Browser> | null = null;
+
+	private readonly katexRenderer = new KatexRenderer();
+	private readonly mermaidRenderer = new MermaidRenderer();
 
 	/**
 	 * Default styles loaded from Zenn's CSS or fallback styles.
@@ -66,8 +71,8 @@ export class ImageConverter {
 		options: ConversionOptions,
 		context: ConversionContext = {},
 	): Promise<Uint8Array> {
-		const htmlContent = await this.renderContent(section.content, context);
-		const html = this.generateDocument(htmlContent, this.getMargin());
+		const content = await this.renderContent(section.content, context);
+		const html = await this.generateDocument(content, this.getMargin());
 		return this.captureImage(html, options);
 	}
 
@@ -78,9 +83,17 @@ export class ImageConverter {
 		markdown: string,
 		context: ConversionContext,
 	): Promise<string> {
-		const htmlContent = markdownToHtml(markdown);
+		const rawContent = await Promise.resolve(
+			markdownToHtml(markdown, {
+				embedOrigin: "https://embed.zenn.studio",
+				customEmbed: {
+					mermaid: (source) => this.mermaidRenderer.createEmbed(source),
+				},
+			}),
+		);
 		const assetInliner = new HtmlImageAssetInliner(context.sourceFilePath);
-		return assetInliner.inline(htmlContent);
+		const contentWithAssets = await assetInliner.inline(rawContent);
+		return this.katexRenderer.render(contentWithAssets);
 	}
 
 	private getMargin(): number {
@@ -102,13 +115,21 @@ export class ImageConverter {
 	 * @param margin - The margin around the rendered content in pixels
 	 * @returns HTML string with applied styles
 	 */
-	private generateDocument(content: string, margin: number): string {
+	private async generateDocument(
+		content: string,
+		margin: number,
+	): Promise<string> {
+		const katexStyles = await this.katexRenderer.getStyles();
+		const mermaidStyles = this.mermaidRenderer.getStyles();
+
 		return `
       <!DOCTYPE html>
       <html>
         <head>
           <meta charset="UTF-8">
           <style>${this.defaultStyles}</style>
+          <style>${katexStyles}</style>
+          <style>${mermaidStyles}</style>
           <style>
             body {
               margin: 0;
@@ -117,7 +138,6 @@ export class ImageConverter {
               display: inline-block;
               padding: ${margin}px;
             }
-            /* Additional styles for images */
             .znc img {
               max-width: 100%;
               height: auto;
@@ -157,6 +177,7 @@ export class ImageConverter {
 
 			await page.setContent(html, { waitUntil: "domcontentloaded" });
 			await page.waitForSelector(".render-frame");
+			await this.mermaidRenderer.render(page);
 			await page.evaluate(async () => {
 				await document.fonts.ready;
 			});

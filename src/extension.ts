@@ -102,7 +102,7 @@ export function activate(context: vscode.ExtensionContext) {
 					);
 
 					// Show success notification
-					await vscode.window.showInformationMessage(
+					void vscode.window.showInformationMessage(
 						`✨ Successfully converted to ${format.toUpperCase()}!`,
 					);
 					return true;

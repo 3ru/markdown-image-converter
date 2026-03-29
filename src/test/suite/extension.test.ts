@@ -7,8 +7,7 @@ import * as vscode from "vscode";
 const TEST_CONFIG = {
 	dir: path.join(__dirname, "../../../test-workspace"),
 	fileNameSlug: "test",
-	timeout: 5000, // 5 seconds
-	waitTime: 3000, // Time to wait for file generation
+	timeout: 10000,
 };
 
 /**
@@ -81,6 +80,12 @@ This is a test markdown file with multiple sections.
 ## Section 2
 Some more content with **bold** and *italic* text.
 
+Inline math: $E = mc^2$
+
+$$
+\\sum_{i=1}^{n} x_i
+$$
+
 \`\`\`javascript
 console.log('Hello World');
 \`\`\`
@@ -122,17 +127,15 @@ console.log('Hello World');
 		this.timeout(TEST_CONFIG.timeout);
 		const document = await vscode.workspace.openTextDocument(testFile);
 		await vscode.window.showTextDocument(document);
-
-		// Note: executeCommand is called without await as it doesn't return a proper promise
-		vscode.commands.executeCommand("markdown-image-converter.exportPNG");
-
-		// Wait for file generation
+		const didConvert = await vscode.commands.executeCommand<boolean>(
+			"markdown-image-converter.exportPNG",
+		);
 		const expectedFile = path.join(
 			TEST_CONFIG.dir,
 			`${TEST_CONFIG.fileNameSlug}.png`,
 		);
-		await new Promise((resolve) => setTimeout(resolve, TEST_CONFIG.waitTime));
 
+		assert.strictEqual(didConvert, true, "PNG export command should succeed");
 		await verifyGeneratedImage(expectedFile, "PNG");
 	});
 
@@ -150,14 +153,17 @@ console.log('Hello World');
 		// Prepare and execute conversion
 		const document = await vscode.workspace.openTextDocument(testFile);
 		await vscode.window.showTextDocument(document);
-		vscode.commands.executeCommand("markdown-image-converter.exportJPEG");
+		const didConvert = await vscode.commands.executeCommand<boolean>(
+			"markdown-image-converter.exportJPEG",
+		);
 
 		// Verify output
 		const expectedFile = path.join(
 			TEST_CONFIG.dir,
 			`${TEST_CONFIG.fileNameSlug}.jpeg`,
 		);
-		await new Promise((resolve) => setTimeout(resolve, TEST_CONFIG.waitTime));
+
+		assert.strictEqual(didConvert, true, "JPEG export command should succeed");
 		await verifyGeneratedImage(expectedFile, "JPEG");
 	});
 

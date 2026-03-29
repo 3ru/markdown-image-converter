@@ -53,6 +53,15 @@ console.log(test);
 [Link](https://example.com)`,
 			index: 1,
 		} as const,
+		mathSection: {
+			content: `# Math Document
+Inline math: $E=mc^2$
+
+$$
+\\sum_{i=1}^{n} x_i
+$$`,
+			index: 2,
+		} as const,
 	};
 
 	const fixtureImagePath = path.resolve(
@@ -116,6 +125,20 @@ console.log(test);
 				buffer.length > 0,
 				"Should successfully convert complex markdown content",
 			);
+		});
+
+		test("should render inline and block math expressions", async () => {
+			const options = {
+				format: "png" as const,
+				resolution: "standard" as const,
+			};
+
+			const buffer = await converter.convertToImage(
+				fixtures.mathSection,
+				options,
+			);
+
+			assert.ok(buffer.length > 0, "Should render markdown with KaTeX content");
 		});
 	});
 
