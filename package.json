@@ -9,6 +9,7 @@
 		"type": "git",
 		"url": "https://github.com/3ru/markdown-image-converter"
 	},
+	"packageManager": "pnpm@10.15.1",
 	"version": "0.0.4",
 	"engines": {
 		"vscode": "^1.80.0"
