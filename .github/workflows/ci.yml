@@ -99,6 +99,8 @@ jobs:
         with:
           path: ~/.cache/puppeteer
           key: puppeteer-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            puppeteer-${{ runner.os }}-
 
       # Create test workspace
       - name: Create test directories
@@ -111,6 +113,15 @@ jobs:
       - name: Install dependencies
         run: |
           pnpm install --frozen-lockfile
+        shell: bash
+
+      # pnpm blocks the puppeteer postinstall script, so on a cache miss the
+      # pinned Chrome for Testing would be absent and browser resolution falls
+      # back to /usr/bin/chromium-browser (a snap stub whose first launch can
+      # stall for 30s+, hanging the first export test). Install it explicitly;
+      # this is a no-op when the cache already has the browser.
+      - name: Install Puppeteer browser
+        run: node node_modules/puppeteer/install.mjs
         shell: bash
 
       # Run tests with OS-specific configuration
