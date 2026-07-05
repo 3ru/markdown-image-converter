@@ -12,3 +12,11 @@ vsc-extension-quickstart.md
 **/*.map
 **/*.ts
 **/.vscode-test.*
+.github/**
+tests/*
+dist/styles/**
+images/**
+!images/icon.png
+biome.json
+CODEOWNERS
+pnpm-lock.yaml
