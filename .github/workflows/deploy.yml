@@ -110,8 +110,10 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    environment: release
     permissions:
       contents: read
+      id-token: write
     steps:
       - name: Checkout release commit
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
@@ -143,10 +145,26 @@ jobs:
           PUPPETEER_SKIP_DOWNLOAD: 1
         run: pnpm install --frozen-lockfile
 
+      # Marketplace auth uses Entra ID workload identity federation: the job's
+      # OIDC token is exchanged for a short-lived credential of a managed
+      # identity that is a member of the publisher. No stored secret, nothing
+      # to expire or rotate.
+      - name: Azure login (OIDC)
+        uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3.0.0
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          allow-no-subscriptions: true
+
+      - name: Verify Marketplace access
+        env:
+          AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+        run: pnpm exec vsce verify-pat --azure-credential ryuya
+
       - name: Publish to Visual Studio Marketplace
         env:
-          VSCE_PAT: ${{ secrets.VSCE_PAT }}
-        run: pnpm exec vsce publish --packagePath "release-dist/${{ needs.build.outputs.release_asset }}"
+          AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+        run: pnpm exec vsce publish --azure-credential --packagePath "release-dist/${{ needs.build.outputs.release_asset }}"
 
   create-release:
     needs:
