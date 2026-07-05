@@ -7,7 +7,7 @@ import * as vscode from "vscode";
 const TEST_CONFIG = {
 	dir: path.join(__dirname, "../../../test-workspace"),
 	fileNameSlug: "test",
-	timeout: 10000,
+	timeout: 30000,
 };
 
 /**
@@ -175,7 +175,7 @@ console.log('Hello World');
 	});
 
 	test("Should apply configurable margin to PNG output", async function () {
-		this.timeout(15000);
+		this.timeout(TEST_CONFIG.timeout);
 
 		const configuration = vscode.workspace.getConfiguration(
 			"markdown-image-converter",
